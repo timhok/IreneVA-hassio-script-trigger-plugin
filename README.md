@@ -30,7 +30,10 @@ sequence:
   - service: light.turn_off
     data: {}
     target:
-      area_id: spalnia
+      area_id:
+        - kuhnya
+        - korridor
+        - spalnia
   - service: light.turn_on
     data:
       brightness_pct: 20
