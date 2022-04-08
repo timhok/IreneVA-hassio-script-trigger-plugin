@@ -23,6 +23,33 @@
 
 >Скрипт выключает весь свет, в спальне включает ночник и устанавливает комфортную температуру, жалюзи закрываются, ассистент желает вам приятных снов
 
+```YAML
+alias: спать
+description: ttsreply(Приятных снов)
+sequence:
+  - service: light.turn_off
+    data: {}
+    target:
+      area_id: spalnia
+  - service: light.turn_on
+    data:
+      brightness_pct: 20
+      kelvin: 2500
+    target:
+      entity_id: light.tradfri_lamp_level_light_color_on_off
+  - service: climate.set_temperature
+    data:
+      temperature: 20
+    target:
+      area_id: spalnia
+  - service: switch.turn_on
+    data: {}
+    target:
+      entity_id: switch.blinds_bedroom
+mode: single
+icon: mdi:bed
+```
+
 2. Вы говорите "ирина я буду собиратся на работу"
 
 >Скрипт присылает вам на телефон прогноз погоды и примерное время пути, термостат отключается, включается чайник на кухне, ассистент желает  продуктивного дня
