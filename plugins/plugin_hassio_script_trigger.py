@@ -9,6 +9,7 @@ import requests
 from vacore import VACore
 
 modname = os.path.basename(__file__)[:-3] # calculating modname
+hassio_scripts = []
 
 # функция на старте
 def start(core:VACore):
@@ -31,6 +32,7 @@ def start_with_options(core:VACore, manifest:dict):
     pass
 
 def hassio_commands(core:VACore):
+    global hassio_scripts
     jaaRootFolder = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
     jaaOptionsPath = jaaRootFolder+os.path.sep+"options"
 
@@ -45,6 +47,7 @@ def hassio_commands(core:VACore):
         import traceback
         traceback.print_exc()
         print("Файл с конфигурацией плагина недоступен")
+        return {}
 
     if options["hassio_url"] == "" or options["hassio_key"] == "":
         core.play_voice_assistant_speech("Нужен ключ или ссылка для Хоум Ассистента")
@@ -83,16 +86,6 @@ def hassio_run_script(core:VACore, phrase:str, command:str):
         return
 
     try:
-        url = options["hassio_url"] + "api/services"
-        headers = {"Authorization": "Bearer " + options["hassio_key"]}
-        res = requests.get(url, headers=headers) # запрашиваем все доступные сервисы
-        hassio_services = res.json()
-        hassio_scripts = []
-        for service in hassio_services: # ищем скрипты среди списка доступных сервисов
-            if service["domain"] == "script":
-                hassio_scripts = service["services"]
-                break
-
         no_script = True
         for script in hassio_scripts:
             if str(hassio_scripts[script]["name"]) == command: # ищем скрипт с подходящим именем
