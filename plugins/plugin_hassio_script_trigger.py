@@ -2,11 +2,14 @@
 # author: Timhok
 
 import os
+import json
 import random
+import requests
 
 from vacore import VACore
 
 modname = os.path.basename(__file__)[:-3] # calculating modname
+hassio_scripts = []
 
 # функция на старте
 def start(core:VACore):
@@ -21,17 +24,60 @@ def start(core:VACore):
             "default_reply": [ "Хорошо", "Выполняю", "Будет сделано" ], # ответить если в описании скрипта не указан ответ в формате "ttsreply(текст)"
         },
 
-        "commands": {
-            "хочу|сделай|я буду": hassio_run_script,
-        }
+        "commands": hassio_commands(core)
     }
     return manifest
 
 def start_with_options(core:VACore, manifest:dict):
     pass
 
-def hassio_run_script(core:VACore, phrase:str):
+def hassio_commands(core:VACore):
+    global hassio_scripts
+    jaaRootFolder = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+    jaaOptionsPath = jaaRootFolder+os.path.sep+"options"
 
+    options = {}
+    try:
+        with open(jaaOptionsPath+'/plugin_hassio_script_trigger.json', 'r', encoding="utf-8") as f:
+            s = f.read(10000000)
+            f.close()
+        options = json.loads(s)
+        #print("Saved options", options)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print("Файл с конфигурацией плагина недоступен")
+        return {}
+
+    if options["hassio_url"] == "" or options["hassio_key"] == "":
+        core.play_voice_assistant_speech("Нужен ключ или ссылка для Хоум Ассистента")
+        return {}
+
+    try:
+        commands = []
+        url = options["hassio_url"] + "api/services"
+        headers = {"Authorization": "Bearer " + options["hassio_key"]}
+        res = requests.get(url, headers=headers) # запрашиваем все доступные сервисы
+        hassio_services = res.json()
+        for service in hassio_services: # ищем скрипты среди списка доступных сервисов
+            if service["domain"] == "script":
+                hassio_scripts = service["services"]
+                for script in hassio_scripts:
+                    commands.append(hassio_scripts[script]["name"])
+                break
+
+        ret = {}
+        for command in commands:
+            ret[command] = (hassio_run_script, command)
+        return ret
+
+    except:
+        import traceback
+        traceback.print_exc()
+        core.play_voice_assistant_speech("Не получилось получить список команд HomeAssistant")
+        return {}
+
+def hassio_run_script(core:VACore, phrase:str, command:str):
     options = core.plugin_options(modname)
 
     if options["hassio_url"] == "" or options["hassio_key"] == "":
@@ -40,20 +86,8 @@ def hassio_run_script(core:VACore, phrase:str):
         return
 
     try:
-        import requests
-        url = options["hassio_url"] + "api/services"
-        headers = {"Authorization": "Bearer " + options["hassio_key"]}
-        res = requests.get(url, headers=headers) # запрашиваем все доступные сервисы
-        hassio_services = res.json()
-        hassio_scripts = []
-        for service in hassio_services: # ищем скрипты среди списка доступных сервисов
-            if service["domain"] == "script":
-                hassio_scripts = service["services"]
-                break
-
-        no_script = True
         for script in hassio_scripts:
-            if str(hassio_scripts[script]["name"]) == phrase: # ищем скрипт с подходящим именем
+            if str(hassio_scripts[script]["name"]) == command: # ищем скрипт с подходящим именем
                 url = options["hassio_url"] + "api/services/script/" + str(script)
                 headers = {"Authorization": "Bearer " + options["hassio_key"]}
                 res = requests.post(url, headers=headers) # выполняем скрипт
@@ -62,10 +96,7 @@ def hassio_run_script(core:VACore, phrase:str):
                     core.play_voice_assistant_speech(script_desc.split("ttsreply(")[1].split(")")[0])
                 else: # если в описании ответа нет, выбираем случайный ответ по умолчанию
                     core.play_voice_assistant_speech(options["default_reply"][random.randint(0, len(options["default_reply"]) - 1)])
-                no_script = False
                 break
-        if no_script:
-            core.play_voice_assistant_speech("Не могу помочь с этим")
 
     except:
         import traceback
