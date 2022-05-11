@@ -86,7 +86,6 @@ def hassio_run_script(core:VACore, phrase:str, command:str):
         return
 
     try:
-        no_script = True
         for script in hassio_scripts:
             if str(hassio_scripts[script]["name"]) == command: # ищем скрипт с подходящим именем
                 url = options["hassio_url"] + "api/services/script/" + str(script)
@@ -97,10 +96,7 @@ def hassio_run_script(core:VACore, phrase:str, command:str):
                     core.play_voice_assistant_speech(script_desc.split("ttsreply(")[1].split(")")[0])
                 else: # если в описании ответа нет, выбираем случайный ответ по умолчанию
                     core.play_voice_assistant_speech(options["default_reply"][random.randint(0, len(options["default_reply"]) - 1)])
-                no_script = False
                 break
-        if no_script:
-            core.play_voice_assistant_speech("Не могу помочь с этим")
 
     except:
         import traceback
